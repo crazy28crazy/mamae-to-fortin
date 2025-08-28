@@ -6,7 +6,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 $DB_HOST = '127.0.0.1';
-$DB_NAME = 'academia'; 
+$DB_NAME = 'academia';
 $DB_USER = 'root';
 $DB_PASS = '';
 $BASE_URL = '/';
@@ -46,6 +46,7 @@ function csrf_check(): void {
 
 function require_login(): void {
     if (empty($_SESSION['user_id'])) {
+        // CORREÇÃO: Redireciona para 'login.php' se o usuário não estiver logado.
         header('Location: login.php');
         exit;
     }
@@ -54,6 +55,7 @@ function require_login(): void {
 function current_user(PDO $pdo): ?array {
     if (empty($_SESSION['user_id'])) return null;
 
+    // Esta função busca os dados do usuário e suas funções (papéis) no sistema.
     $sql = "
         SELECT U.id_usuario, U.nome, U.email, U.cpf, U.idade,
                GROUP_CONCAT(F.descricao) AS funcoes
@@ -73,4 +75,5 @@ function is_admin(array $u=null): bool {
     $funcoes = explode(',', $u['funcoes'] ?? '');
     return in_array('Administrador', $funcoes, true);
 }
+
 ?>
