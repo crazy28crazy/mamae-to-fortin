@@ -48,7 +48,7 @@ $usuarios = $st_users->fetchAll(PDO::FETCH_ASSOC);
         <p class="sem-msg">Nenhuma mensagem ainda.</p>
       <?php else: ?>
         <?php foreach ($mensagens as $m): ?>
-          <div class="chat-message <?= $m['id_remetente'] == $user['id_usuario'] ? 'sent' : 'received' ?>">
+          <div class="chat-message <?= $m['remetente'] == $user['usuario'] ? 'sent' : 'received' ?>">
             <p><strong><?= htmlspecialchars($m['remetente_nome']) ?>:</strong> <?= htmlspecialchars($m['conteudo']) ?></p>
             <small><?= date("d/m H:i", strtotime($m['data_envio'])) ?></small>
           </div>

@@ -1,4 +1,7 @@
-CREATE DATABASE IF NOT EXISTS academia;
+DROP DATABASE IF EXISTS academia;
+''
+CREATE DATABASE academia CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 USE academia;
 
 CREATE TABLE Usuario (
@@ -9,48 +12,69 @@ CREATE TABLE Usuario (
     email VARCHAR(100) NOT NULL UNIQUE,
     senha VARCHAR(255) NOT NULL
 );
+
+
 CREATE TABLE Funcao (
     id_funcao INT AUTO_INCREMENT PRIMARY KEY,
     descricao VARCHAR(50) NOT NULL UNIQUE
 );
+
+
 CREATE TABLE Usuario_Funcao (
     id_usuario_funcao INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     id_funcao INT NOT NULL,
-    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario),
-    FOREIGN KEY (id_funcao) REFERENCES Funcao(id_funcao)
+    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_funcao) REFERENCES Funcao(id_funcao) ON DELETE CASCADE
 );
+
+
+CREATE TABLE PersonalTrainer (
+    id_personal INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL UNIQUE,
+    especializacao VARCHAR(100),
+    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE
+);
+
+
+CREATE TABLE Agendamento (
+    id_agendamento INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_personal INT NOT NULL,
+    data_hora DATETIME NOT NULL,
+    status VARCHAR(50) DEFAULT 'Agendado',
+    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_personal) REFERENCES PersonalTrainer(id_personal) ON DELETE CASCADE
+);
+
 CREATE TABLE Plano (
     id_plano INT AUTO_INCREMENT PRIMARY KEY,
     nome_plano VARCHAR(100) NOT NULL,
     descricao TEXT,
-    preco DECIMAL(10,2) NOT NULL
+    preco DECIMAL(10, 2) NOT NULL
 );
+
+
 CREATE TABLE Pagamento (
     id_pagamento INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     id_plano INT NOT NULL,
     data_pagamento DATE NOT NULL,
     status VARCHAR(20) NOT NULL,
-    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario),
-    FOREIGN KEY (id_plano) REFERENCES Plano(id_plano)
+    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_plano) REFERENCES Plano(id_plano) ON DELETE CASCADE
 );
-CREATE TABLE Aula (
-    id_aula INT AUTO_INCREMENT PRIMARY KEY,
-    id_aluno INT NOT NULL,
-    id_personal INT NOT NULL,
-    data DATE NOT NULL,
-    horario TIME NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    FOREIGN KEY (id_aluno) REFERENCES Usuario(id_usuario),
-    FOREIGN KEY (id_personal) REFERENCES Usuario(id_usuario)
-);
+
+
 CREATE TABLE Mensagem (
     id_mensagem INT AUTO_INCREMENT PRIMARY KEY,
     id_remetente INT NOT NULL,
     id_destinatario INT NOT NULL,
     conteudo TEXT NOT NULL,
     data_envio DATETIME NOT NULL,
-    FOREIGN KEY (id_remetente) REFERENCES Usuario(id_usuario),
-    FOREIGN KEY (id_destinatario) REFERENCES Usuario(id_usuario)
+    FOREIGN KEY (id_remetente) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_destinatario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE
 );
+
+
+INSERT INTO Funcao (descricao) VALUES ('Aluno'), ('PersonalTrainer'), ('Administrador');

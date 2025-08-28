@@ -6,12 +6,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = $_POST["email"];
     $senha = $_POST["senha"];
 
-    $stmt = $pdo->prepare("SELECT id_usuario, nome, senha FROM Usuario WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT usuario, nome, senha FROM Usuario WHERE email = ?");
     $stmt->execute([$email]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($usuario && password_verify($senha, $usuario["senha"])) {
-        $_SESSION["id_usuario"] = $usuario["id_usuario"];
+        $_SESSION["usuario"] = $usuario["usuario"];
         $_SESSION["nome"] = $usuario["nome"];
         header("Location: index.php");
         exit;
