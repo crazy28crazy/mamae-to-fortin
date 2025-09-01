@@ -5,13 +5,15 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+// Configurações da base de dados
 $DB_HOST = '127.0.0.1';
-$DB_NAME = 'academia';
+$DB_NAME = 'academia'; 
 $DB_USER = 'root';
 $DB_PASS = '';
 $BASE_URL = '/';
 
 try {
+    // A correção crucial está aqui: garantir que a ligação PDO use utf8mb4
     $pdo = new PDO(
         "mysql:host={$DB_HOST};dbname={$DB_NAME};charset=utf8mb4",
         $DB_USER,
@@ -23,9 +25,11 @@ try {
     );
 } catch (Throwable $e) {
     http_response_code(500);
-    echo 'Erro de conexão ao banco. Verifique config.php';
+    echo 'Erro de ligação à base de dados. Verifique o config.php';
     exit;
 }
+
+// --- Restante do ficheiro config.php (sem alterações) ---
 
 function csrf_token(): string {
     if (empty($_SESSION['csrf'])) {
@@ -33,6 +37,7 @@ function csrf_token(): string {
     }
     return $_SESSION['csrf'];
 }
+
 function csrf_check(): void {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ok = isset($_POST['csrf']) && hash_equals($_SESSION['csrf'] ?? '', (string)$_POST['csrf']);
@@ -43,10 +48,8 @@ function csrf_check(): void {
     }
 }
 
-
 function require_login(): void {
     if (empty($_SESSION['user_id'])) {
-        // CORREÇÃO: Redireciona para 'login.php' se o usuário não estiver logado.
         header('Location: login.php');
         exit;
     }
@@ -55,7 +58,6 @@ function require_login(): void {
 function current_user(PDO $pdo): ?array {
     if (empty($_SESSION['user_id'])) return null;
 
-    // Esta função busca os dados do usuário e suas funções (papéis) no sistema.
     $sql = "
         SELECT U.id_usuario, U.nome, U.email, U.cpf, U.idade,
                GROUP_CONCAT(F.descricao) AS funcoes
@@ -70,10 +72,20 @@ function current_user(PDO $pdo): ?array {
     return $st->fetch() ?: null;
 }
 
-function is_admin(array $u=null): bool {
-    if (!$u) return false;
-    $funcoes = explode(',', $u['funcoes'] ?? '');
-    return in_array('Administrador', $funcoes, true);
+function has_role(string $role, array $user=null): bool {
+    if (!$user) return false;
+    $funcoes = explode(',', $user['funcoes'] ?? '');
+    return in_array($role, $funcoes, true);
 }
 
-?>
+function is_admin(array $user=null): bool {
+    return has_role('Administrador', $user);
+}
+
+function is_aluno(array $user=null): bool {
+    return has_role('Aluno', $user);
+}
+
+function is_personal(array $user=null): bool {
+    return has_role('PersonalTrainer', $user);
+}

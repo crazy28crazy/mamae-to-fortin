@@ -13,7 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $st = $pdo->prepare("INSERT INTO Mensagem (id_remetente, id_destinatario, conteudo, data_envio) VALUES (?, ?, ?, NOW())");
         $st->execute([$remetente_id, $destinatario_id, $conteudo]);
     }
+
+    // Redireciona de volta para a mesma conversa no index.php
+    header("Location: index.php?chat=" . $destinatario_id);
+    exit;
 }
 
+// Se o acesso não for para enviar uma mensagem, redireciona para a página inicial
 header("Location: index.php");
 exit;
+

@@ -1,28 +1,43 @@
 <?php
+header('Content-Type: text/html; charset=utf-8');
 require __DIR__ . '/config.php';
 
-// A verificação de login foi movida para depois da inclusão do config,
-// mas a lógica principal da página só executa se o usuário estiver logado.
-$usuario_logado = !empty($_SESSION['user_id']);
+// A função current_user retorna null se não houver login
+$user = current_user($pdo);
+$id_usuario_atual = $user['id_usuario'] ?? null;
 
-if ($usuario_logado) {
-    $user = current_user($pdo);
+// --- Lógica do Chat (só executa se o utilizador estiver com sessão iniciada) ---
+if ($user) {
+    $destinatario_id = $_GET['chat'] ?? null;
 
-    // Busca mensagens do usuário (somente onde ele é remetente ou destinatário)
-    $st = $pdo->prepare("
-        SELECT m.*, u.nome AS remetente_nome
-        FROM Mensagem m
-        JOIN Usuario u ON m.id_remetente = u.id_usuario
-        WHERE m.id_remetente = :id OR m.id_destinatario = :id
-        ORDER BY m.data_envio ASC
-    ");
-    $st->execute(['id' => $user['id_usuario']]);
-    $mensagens = $st->fetchAll(PDO::FETCH_ASSOC);
+    // Marca as mensagens recebidas como lidas
+    if ($destinatario_id) {
+        $stmt_update = $pdo->prepare(
+            "UPDATE Mensagem SET data_visualizacao = NOW()
+             WHERE id_destinatario = :eu AND id_remetente = :outro AND data_visualizacao IS NULL"
+        );
+        $stmt_update->execute(['eu' => $id_usuario_atual, 'outro' => $destinatario_id]);
+    }
 
-    // Busca outros usuários para o chat
-    $st_users = $pdo->prepare("SELECT id_usuario, nome FROM Usuario WHERE id_usuario != :id");
-    $st_users->execute(['id' => $user['id_usuario']]);
-    $usuarios = $st_users->fetchAll(PDO::FETCH_ASSOC);
+    $stmt_contatos = $pdo->prepare("SELECT id_usuario, nome FROM Usuario WHERE id_usuario != ?");
+    $stmt_contatos->execute([$id_usuario_atual]);
+    $contatos = $stmt_contatos->fetchAll();
+
+    $mensagens = [];
+    $nome_conversa_com = '';
+    if ($destinatario_id) {
+        $stmt_nome = $pdo->prepare("SELECT nome FROM Usuario WHERE id_usuario = ?");
+        $stmt_nome->execute([$destinatario_id]);
+        $nome_conversa_com = $stmt_nome->fetchColumn();
+
+        $stmt_mensagens = $pdo->prepare(
+            "SELECT * FROM Mensagem
+             WHERE (id_remetente = :eu AND id_destinatario = :outro) OR (id_remetente = :outro AND id_destinatario = :eu)
+             ORDER BY data_envio ASC"
+        );
+        $stmt_mensagens->execute(['eu' => $id_usuario_atual, 'outro' => $destinatario_id]);
+        $mensagens = $stmt_mensagens->fetchAll();
+    }
 }
 ?>
 <!doctype html>
@@ -31,59 +46,124 @@ if ($usuario_logado) {
   <meta charset="utf-8">
   <title>Mamãe to fortin - Início</title>
   <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    h1, p { color: white; }
+    .chat-box {
+      position: fixed; right: 20px; bottom: 0; width: 350px; max-height: 500px;
+      background: #2c2f33; border: 1px solid #23272a; border-radius: 10px 10px 0 0;
+      display: flex; flex-direction: column; font-family: Arial, sans-serif; color: #fff;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 1000;
+    }
+    .chat-header {
+      background: #23272a; padding: 12px; border-radius: 10px 10px 0 0;
+      text-align: center; font-weight: bold; cursor: pointer;
+    }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 15px; background: #36393f;
+      display: flex; flex-direction: column;
+    }
+    .chat-message {
+      margin-bottom: 2px; padding: 8px 12px; border-radius: 18px; max-width: 85%;
+      line-height: 1.4; word-wrap: break-word; position: relative;
+    }
+    .me {
+      background: #005C4B; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px;
+    }
+    .other {
+      background: #40444b; color: #fff; align-self: flex-start; border-bottom-left-radius: 4px;
+    }
+    .message-meta {
+      font-size: 0.75em; color: #a0a0a0; text-align: right;
+      margin-top: 5px; margin-left: 10px;
+    }
+    .me .message-meta { color: #a0e7d0; }
+    .status-ticks {
+      display: inline-block; margin-left: 5px; font-weight: bold;
+    }
+    .status-ticks.sent { color: #a0a0a0; }
+    .status-ticks.seen { color: #53bdeb; }
+    .chat-form {
+      display: flex; align-items: center; padding: 10px;
+      border-top: 1px solid #23272a; background: #40444b;
+    }
+    .chat-form input[type="text"] {
+      flex: 1; height: 40px; padding: 0 15px; border: none; border-radius: 20px;
+      background-color: #33363b; color: white; margin-right: 8px;
+    }
+    .chat-form button {
+      width: 40px; height: 40px; border: none; border-radius: 50%; background-color: #007bff;
+      color: white; cursor: pointer; font-size: 18px; display: flex;
+      justify-content: center; align-items: center;
+    }
+    .contact-list {
+      padding: 10px; border-top: 1px solid #23272a; background: #2c2f33;
+      max-height: 120px; overflow-y: auto;
+    }
+    .contact-list strong { display: block; text-align: center; margin-bottom: 5px; color: #aaa; }
+    .contact-list a {
+      display: block; padding: 8px; color: #00aaff; text-decoration: none; border-radius: 4px;
+    }
+    .contact-list a:hover, .contact-list a.active { background-color: #40444b; }
+    .placeholder { text-align: center; color: #888; margin: auto; }
+  </style>
 </head>
 <body>
+
   <div class="container">
-    <h1 style="color: white;">Bem-vindo à mamãe to fortin</h1>
-    <p style="color: white;">Gerencie seus treinos, planos e agendamentos de forma simples.</p>
+    <h1>Bem-vindo à mamãe to fortin</h1>
+    <p>Gerencie seus treinos, planos e agendamentos de forma simples.</p>
     <nav>
-      <!-- Lógica de Navegação Atualizada -->
-      <?php if ($usuario_logado): ?>
-        <a href="perfil.php">Perfil</a> |
-        <a href="planos.php">Planos</a> |
-        <a href="agendamento.php">Agendamento</a> |
-        <a href="logout.php">Logout</a>
+      <?php if ($user): ?>
+        <a href="perfil.php">Perfil</a> | <a href="planos.php">Planos</a> | <a href="agendamento.php">Agendamento</a> | <a href="logout.php">Logout</a>
       <?php else: ?>
-        <a href="login.php">Login</a> |
-        <a href="cadastro.php">Cadastro</a> |
-        <a href="planos.php">Planos</a>
+        <a href="login.php">Login</a> | <a href="cadastro.php">Cadastro</a> | <a href="planos.php">Planos</a>
       <?php endif; ?>
     </nav>
   </div>
 
-  <!-- A caixa de chat só aparece se o usuário estiver logado -->
-  <?php if ($usuario_logado): ?>
+  <?php if ($user): ?>
   <div class="chat-box">
-    <div class="chat-header">Chat</div>
+    <div class="chat-header">
+      <?= $destinatario_id ? htmlspecialchars($nome_conversa_com) : 'Mensagens Diretas' ?>
+    </div>
     <div class="chat-messages">
-      <?php if (empty($mensagens)): ?>
-        <p class="sem-msg">Nenhuma mensagem ainda.</p>
-      <?php else: ?>
-        <?php foreach ($mensagens as $m): ?>
-          <div class="chat-message <?= $m['id_remetente'] == $user['id_usuario'] ? 'sent' : 'received' ?>">
-            <p><strong><?= htmlspecialchars($m['remetente_nome']) ?>:</strong> <?= htmlspecialchars($m['conteudo']) ?></p>
-            <small><?= date("d/m H:i", strtotime($m['data_envio'])) ?></small>
+      <?php if ($destinatario_id): ?>
+        <?php foreach ($mensagens as $msg): ?>
+          <div class="chat-message <?= $msg['id_remetente'] == $id_usuario_atual ? 'me' : 'other' ?>">
+            <?= htmlspecialchars($msg['conteudo']) ?>
+            <div class="message-meta">
+              <span><?= date('H:i', strtotime($msg['data_envio'])) ?></span>
+              <?php if ($msg['id_remetente'] == $id_usuario_atual): ?>
+                <span class="status-ticks <?= $msg['data_visualizacao'] ? 'seen' : 'sent' ?>">✓✓</span>
+              <?php endif; ?>
+            </div>
           </div>
         <?php endforeach; ?>
+      <?php else: ?>
+        <p class="placeholder">Selecione um contacto na lista abaixo.</p>
       <?php endif; ?>
     </div>
 
-    <!-- Formulário do chat -->
+    <?php if ($destinatario_id): ?>
     <form class="chat-form" method="post" action="chat.php">
       <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
-
-      <!-- Selecionar destinatário -->
-      <select name="destinatario_id" required>
-        <option value="">-- Escolha o usuário --</option>
-        <?php foreach ($usuarios as $u): ?>
-          <option value="<?= $u['id_usuario'] ?>"><?= htmlspecialchars($u['nome']) ?></option>
-        <?php endforeach; ?>
-      </select>
-
-      <input type="text" name="conteudo" placeholder="Digite uma mensagem..." required>
-      <button type="submit">✈</button>
+      <input type="hidden" name="destinatario_id" value="<?= htmlspecialchars($destinatario_id) ?>">
+      <input type="text" name="conteudo" placeholder="Digite uma mensagem..." required autocomplete="off">
+      <button type="submit">➤</button>
     </form>
+    <?php endif; ?>
+
+    <div class="contact-list">
+      <strong>Contactos</strong>
+      <?php foreach ($contatos as $c): ?>
+        <a href="index.php?chat=<?= $c['id_usuario'] ?>" class="<?= $destinatario_id == $c['id_usuario'] ? 'active' : '' ?>">
+          <?= htmlspecialchars($c['nome']) ?>
+        </a>
+      <?php endforeach; ?>
+    </div>
   </div>
   <?php endif; ?>
+
 </body>
 </html>
+

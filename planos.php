@@ -23,11 +23,11 @@ $planos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
   <div class="container">
-      <h2>Planos para Personal Trainers</h2>
-      <p>Escolha o plano ideal para gerenciar seus alunos e aulas.</p>
+      <h2 style="color: white;">Planos para Personal Trainers</h2>
+      <p style="color: white;">Escolha o plano ideal para gerenciar seus alunos e aulas.</p>
       <hr>
       <?php if (empty($planos)): ?>
-          <p>Nenhum plano disponível no momento.</p>
+          <p style="color: white;">Nenhum plano disponível no momento.</p>
       <?php else: ?>
           <?php foreach ($planos as $plano): ?>
               <div class="plano" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
@@ -43,7 +43,7 @@ $planos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                       <?php endforeach; ?>
                   </ul>
 
-                  <p><strong>Preço: R$ <?= number_format((float)$plano["preco"], 2, ',', '.') ?> / mês</strong></p>
+                  <p style="color: white;"><strong>Preço: R$ <?= number_format((float)$plano["preco"], 2, ',', '.') ?> / mês</strong></p>
 
                   <?php
                   // LÓGICA DE FUNÇÃO ATUALIZADA:
