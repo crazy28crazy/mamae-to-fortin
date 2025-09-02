@@ -1,80 +1,77 @@
 DROP DATABASE IF EXISTS academia;
-''
 CREATE DATABASE academia CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 USE academia;
 
-CREATE TABLE Usuario (
+CREATE TABLE usuario (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     cpf VARCHAR(14) NOT NULL UNIQUE,
     idade INT,
     email VARCHAR(100) NOT NULL UNIQUE,
     senha VARCHAR(255) NOT NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
-CREATE TABLE Funcao (
+CREATE TABLE funcao (
     id_funcao INT AUTO_INCREMENT PRIMARY KEY,
     descricao VARCHAR(50) NOT NULL UNIQUE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
-CREATE TABLE Usuario_Funcao (
+CREATE TABLE usuario_funcao (
     id_usuario_funcao INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     id_funcao INT NOT NULL,
-    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
-    FOREIGN KEY (id_funcao) REFERENCES Funcao(id_funcao) ON DELETE CASCADE
-);
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_funcao) REFERENCES funcao(id_funcao) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
-CREATE TABLE PersonalTrainer (
+CREATE TABLE personal_trainer (
     id_personal INT AUTO_INCREMENT PRIMARY KEY,
-    id_usuario INT NOT NULL UNIQUE,
-    especializacao VARCHAR(100),
-    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE
-);
-
-
-CREATE TABLE Agendamento (
-    id_agendamento INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
-    id_personal INT NOT NULL,
-    data_hora DATETIME NOT NULL,
-    status VARCHAR(50) DEFAULT 'Agendado',
-    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
-    FOREIGN KEY (id_personal) REFERENCES PersonalTrainer(id_personal) ON DELETE CASCADE
-);
+    especializacao VARCHAR(100),
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE Plano (
+CREATE TABLE plano (
     id_plano INT AUTO_INCREMENT PRIMARY KEY,
     nome_plano VARCHAR(100) NOT NULL,
     descricao TEXT,
-    preco DECIMAL(10, 2) NOT NULL
-);
+    preco DECIMAL(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
-CREATE TABLE Pagamento (
+CREATE TABLE pagamento (
     id_pagamento INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     id_plano INT NOT NULL,
     data_pagamento DATE NOT NULL,
     status VARCHAR(20) NOT NULL,
-    FOREIGN KEY (id_usuario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
-    FOREIGN KEY (id_plano) REFERENCES Plano(id_plano) ON DELETE CASCADE
-);
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_plano) REFERENCES plano(id_plano) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE agendamento (
+    id_agendamento INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    id_personal INT NOT NULL,
+    data_hora DATETIME NOT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_personal) REFERENCES personal_trainer(id_personal) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE Mensagem (
+CREATE TABLE mensagem (
     id_mensagem INT AUTO_INCREMENT PRIMARY KEY,
     id_remetente INT NOT NULL,
     id_destinatario INT NOT NULL,
     conteudo TEXT NOT NULL,
     data_envio DATETIME NOT NULL,
-    FOREIGN KEY (id_remetente) REFERENCES Usuario(id_usuario) ON DELETE CASCADE,
-    FOREIGN KEY (id_destinatario) REFERENCES Usuario(id_usuario) ON DELETE CASCADE
-);
+    data_visualizacao DATETIME NULL DEFAULT NULL,
+    FOREIGN KEY (id_remetente) REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_destinatario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Dados Iniciais
+INSERT INTO funcao (descricao) VALUES ('Aluno'), ('PersonalTrainer'), ('Administrador');
+INSERT INTO plano (nome_plano, descricao, preco) VALUES
+('Plano Bronze', 'Até 10 alunos;Acesso a Anamnese;Agendamento de Aulas', 25.00),
+('Plano Prata', 'Até 25 alunos;Todos os benefícios do plano Bronze', 50.00),
+('Plano Gold', 'Alunos ilimitados;Todos os benefícios do plano Prata;Brinde exclusivo do site', 75.00);
 
-INSERT INTO Funcao (descricao) VALUES ('Aluno'), ('PersonalTrainer'), ('Administrador');

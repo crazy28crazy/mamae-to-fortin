@@ -3,68 +3,69 @@ require __DIR__ . '/config.php';
 require_login();
 
 $user = current_user($pdo);
-// Pega as funções do usuário (ex: 'Aluno,PersonalTrainer') e transforma em um array.
-$funcoes = explode(',', $user['funcoes'] ?? '');
+$msg = '';
+$agendamentos = [];
+$personais = [];
 
-// Verifica qual é a função principal do usuário para mostrar a tela certa.
-$funcao = '';
-if (in_array('PersonalTrainer', $funcoes)) {
-    $funcao = 'PersonalTrainer';
-} elseif (in_array('Aluno', $funcoes)) {
-    $funcao = 'Aluno';
-}
-
-// Processa um novo agendamento se o usuário for um Aluno.
-if ($funcao === 'Aluno' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+// --- Lógica de Submissão de Formulário (Apenas para Alunos) ---
+if (is_aluno($user) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $id_personal = (int)($_POST['id_personal'] ?? 0);
     $data_hora = trim($_POST['data_hora'] ?? '');
 
     if ($id_personal && $data_hora) {
-        $st = $pdo->prepare("INSERT INTO Agendamento (id_usuario, id_personal, data_hora) VALUES (?, ?, ?)");
-        $st->execute([$user['id_usuario'], $id_personal, $data_hora]);
-        $msg = "Agendamento realizado com sucesso!";
+        try {
+            $st = $pdo->prepare("INSERT INTO agendamento (id_usuario, id_personal, data_hora) VALUES (?, ?, ?)");
+            $st->execute([$user['id_usuario'], $id_personal, $data_hora]);
+            $msg = "Agendamento realizado com sucesso!";
+        } catch (PDOException $e) {
+            $msg = "Erro ao realizar o agendamento.";
+        }
     } else {
-        $msg = "Preencha todos os campos!";
+        $msg = "Por favor, preencha todos os campos!";
     }
 }
 
-// Busca a lista de personais juntando as tabelas PersonalTrainer e Usuario para pegar o nome.
-$personais_query = $pdo->query("
-    SELECT pt.id_personal, u.nome
-    FROM PersonalTrainer pt
-    JOIN Usuario u ON pt.id_usuario = u.id_usuario
-    ORDER BY u.nome
-");
-$personais = $personais_query->fetchAll();
+// --- Lógica de Visualização de Dados ---
 
-// Busca os agendamentos dependendo se o usuário é Aluno ou Personal.
-$agendamentos = [];
-if ($funcao === 'Aluno') {
+// Se for aluno, busca a lista de personais para o formulário.
+if (is_aluno($user)) {
+    $personais = $pdo->query("
+        SELECT pt.id_personal, u.nome
+        FROM personal_trainer pt
+        JOIN usuario u ON pt.id_usuario = u.id_usuario
+        ORDER BY u.nome
+    ")->fetchAll();
+}
+
+// Se for aluno, busca os SEUS agendamentos.
+if (is_aluno($user)) {
     $st = $pdo->prepare("
         SELECT a.data_hora, u.nome AS personal_nome
-        FROM Agendamento a
-        JOIN PersonalTrainer pt ON a.id_personal = pt.id_personal
-        JOIN Usuario u ON pt.id_usuario = u.id_usuario
+        FROM agendamento a
+        JOIN personal_trainer pt ON a.id_personal = pt.id_personal
+        JOIN usuario u ON pt.id_usuario = u.id_usuario
         WHERE a.id_usuario = ?
         ORDER BY a.data_hora DESC
     ");
     $st->execute([$user['id_usuario']]);
     $agendamentos = $st->fetchAll();
-
-} elseif ($funcao === 'PersonalTrainer') {
+}
+// Se for personal, busca os agendamentos feitos COM ELE.
+elseif (is_personal($user)) {
     $st = $pdo->prepare("
         SELECT a.data_hora, u.nome AS aluno_nome
-        FROM Agendamento a
-        JOIN Usuario u ON u.id_usuario = a.id_usuario
+        FROM agendamento a
+        JOIN usuario u ON u.id_usuario = a.id_usuario
         WHERE a.id_personal = (
-            SELECT id_personal FROM PersonalTrainer WHERE id_usuario = ?
+            SELECT id_personal FROM personal_trainer WHERE id_usuario = ?
         )
         ORDER BY a.data_hora DESC
     ");
     $st->execute([$user['id_usuario']]);
     $agendamentos = $st->fetchAll();
 }
+
 ?>
 <!doctype html>
 <html lang="pt-br">
@@ -72,22 +73,34 @@ if ($funcao === 'Aluno') {
   <meta charset="utf-8">
   <title>Agendamentos</title>
   <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    body, .container { color: white; }
+    a { color: #87CEFA; }
+    hr { border-color: #555; }
+    .form-box, .list-box { background-color: #333; padding: 20px; border-radius: 8px; }
+    label { display: block; margin-top: 10px; }
+    select, input[type="datetime-local"], button {
+        width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #555;
+    }
+    button { background-color: #007bff; color: white; cursor: pointer; }
+    ul { list-style-type: none; padding: 0; }
+    li { background-color: #444; padding: 10px; margin-bottom: 5px; border-radius: 4px; }
+  </style>
 </head>
 <body>
   <div class="container">
     <h2>Agendamentos</h2>
     <a href="index.php">Voltar para a página inicial</a>
     <hr>
-    <?php if (!empty($msg)): ?>
-      <p style="color: green; font-weight: bold;"><?= htmlspecialchars($msg) ?></p>
+    <?php if ($msg): ?>
+      <p style="color: #28a745; font-weight: bold;"><?= htmlspecialchars($msg) ?></p>
     <?php endif; ?>
 
-    <?php if ($funcao === 'Aluno'): ?>
+    <?php if (is_aluno($user)): ?>
       <h3>Novo Agendamento</h3>
-      <p>Utilize o formulário abaixo para marcar uma nova aula com um de nossos personais.</p>
+      <p>Utilize o formulário abaixo para marcar uma nova aula.</p>
       <form method="post" class="form-box">
         <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
-
         <label for="id_personal">Escolha um personal:</label>
         <select name="id_personal" id="id_personal" required>
           <option value="">-- Selecione --</option>
@@ -95,36 +108,32 @@ if ($funcao === 'Aluno') {
             <option value="<?= $p['id_personal'] ?>"><?= htmlspecialchars($p['nome']) ?></option>
           <?php endforeach; ?>
         </select>
-
         <label for="data_hora">Data e Hora:</label>
         <input type="datetime-local" name="data_hora" id="data_hora" required>
-
-        <button type="submit">Agendar</button>
+        <button type="submit" style="margin-top: 15px;">Agendar</button>
       </form>
       <hr>
       <h3>Seus agendamentos</h3>
 
-    <?php elseif ($funcao === 'PersonalTrainer'): ?>
+    <?php elseif (is_personal($user)): ?>
       <h3>Alunos agendados com você</h3>
-      <p>Esta é a lista de aulas agendadas com você. Você não pode criar novos agendamentos por aqui.</p>
 
     <?php else: ?>
       <h3>Sem permissão</h3>
-      <p>Seu perfil não tem permissão para criar ou visualizar agendamentos. Se você for um aluno, entre em contato com o suporte.</p>
+      <p>O seu perfil não tem permissão para aceder a esta área.</p>
     <?php endif; ?>
 
-    <?php if ($funcao === 'Aluno' || $funcao === 'PersonalTrainer'): ?>
+    <?php if (is_aluno($user) || is_personal($user)): ?>
       <ul class="list-box">
         <?php if (!empty($agendamentos)): ?>
           <?php foreach ($agendamentos as $a): ?>
             <li>
-              <?php if ($funcao === 'Aluno'): ?>
+              <?php if (is_aluno($user)): ?>
                 <strong>Personal:</strong> <?= htmlspecialchars($a['personal_nome']) ?><br>
-                <strong>Data:</strong> <?= date('d/m/Y H:i', strtotime($a['data_hora'])) ?>
               <?php else: ?>
                 <strong>Aluno:</strong> <?= htmlspecialchars($a['aluno_nome']) ?><br>
-                <strong>Data:</strong> <?= date('d/m/Y H:i', strtotime($a['data_hora'])) ?>
               <?php endif; ?>
+              <strong>Data:</strong> <?= date('d/m/Y H:i', strtotime($a['data_hora'])) ?>
             </li>
           <?php endforeach; ?>
         <?php else: ?>
@@ -135,3 +144,4 @@ if ($funcao === 'Aluno') {
   </div>
 </body>
 </html>
+

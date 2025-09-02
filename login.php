@@ -1,24 +1,15 @@
 <?php
-session_start();
-// Usa o config.php para a conexão com o banco de dados, o que é uma prática melhor.
-require_once "config.php";
-
-// Se o usuário já estiver logado, redireciona para a página inicial.
-if (!empty($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit;
-}
+require __DIR__ . '/config.php';
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = $_POST["email"];
     $senha = $_POST["senha"];
 
-    $stmt = $pdo->prepare("SELECT id_usuario, nome, senha FROM Usuario WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id_usuario, nome, senha FROM usuario WHERE email = ?");
     $stmt->execute([$email]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($usuario && password_verify($senha, $usuario["senha"])) {
-        // CORREÇÃO: A sessão agora é '_id' para ser consistente com o resto do sistema.
         $_SESSION["user_id"] = $usuario["id_usuario"];
         $_SESSION["nome"] = $usuario["nome"];
         header("Location: index.php");
