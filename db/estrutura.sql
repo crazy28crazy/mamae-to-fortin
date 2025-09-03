@@ -27,6 +27,7 @@ CREATE TABLE usuario_funcao (
 CREATE TABLE personal_trainer (
     id_personal INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
+    cref VARCHAR(20) NULL,
     especializacao VARCHAR(100),
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -44,6 +45,7 @@ CREATE TABLE pagamento (
     id_plano INT NOT NULL,
     data_pagamento DATE NOT NULL,
     status VARCHAR(20) NOT NULL,
+    id_transacao_api VARCHAR(255) NULL,
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE,
     FOREIGN KEY (id_plano) REFERENCES plano(id_plano) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -67,6 +69,22 @@ CREATE TABLE mensagem (
     FOREIGN KEY (id_remetente) REFERENCES usuario(id_usuario) ON DELETE CASCADE,
     FOREIGN KEY (id_destinatario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE anamnese (
+  id_anamnese int(11) NOT NULL AUTO_INCREMENT,
+  id_aluno int(11) NOT NULL,
+  id_personal int(11) NOT NULL,
+  objetivos text DEFAULT NULL,
+  historico_lesoes text DEFAULT NULL,
+  medicamentos text DEFAULT NULL,
+  observacoes text DEFAULT NULL,
+  data_criacao timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (id_anamnese),
+  UNIQUE KEY idx_aluno_personal (id_aluno,id_personal),
+  CONSTRAINT fk_anamnese_aluno FOREIGN KEY (id_aluno) REFERENCES usuario (id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_anamnese_personal FOREIGN KEY (id_personal) REFERENCES personal_trainer (id_personal) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- Dados Iniciais
 INSERT INTO funcao (descricao) VALUES ('Aluno'), ('PersonalTrainer'), ('Administrador');
