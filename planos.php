@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: text/html; charset=utf-8');
 require __DIR__ . '/config.php';
-require_role('PersonalTrainer'); // <-- Esta linha protege a página
+require_role('PersonalTrainer');
 
 $user = current_user($pdo);
 $planos = $pdo->query("SELECT * FROM plano ORDER BY preco ASC")->fetchAll();
@@ -13,19 +13,56 @@ $planos = $pdo->query("SELECT * FROM plano ORDER BY preco ASC")->fetchAll();
   <title>Planos para Personal Trainers</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <style>
-    body, .container, h2, h3, p, strong, li { color: white; }
-    .planos-container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px; }
-    .plano { border: 1px solid #555; border-radius: 8px; padding: 20px; width: 30%; background-color: #2c2f33; display: flex; flex-direction: column; }
-    .plano ul { list-style-position: inside; padding-left: 0; flex-grow: 1; }
-    .btn-contratar { display: block; width: 100%; text-align: center; margin-top: 15px; }
+    /* Estilos para o layout dos planos */
+    .planos-container {
+        display: flex; /* Ativa o layout flexbox para alinhar os planos horizontalmente */
+        justify-content: center; /* Centraliza os planos na página */
+        flex-wrap: wrap; /* Permite que os planos quebrem para a linha de baixo */
+        gap: 25px; /* Espaço entre os planos */
+        text-align: left; /* Alinha o texto dentro de cada plano à esquerda */
+    }
+    .plano {
+        border: 1px solid #00ff66; /* Borda verde para combinar com o tema */
+        border-radius: 15px;
+        padding: 25px;
+        width: 28%; /* Define a largura para caberem 3 por linha */
+        background-color: rgba(0, 0, 0, 0.3);
+        display: flex; /* Essencial para que todos os planos tenham a mesma altura */
+        flex-direction: column; /* Organiza o conteúdo em uma coluna */
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .plano:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 255, 102, 0.2);
+    }
+    .plano h3 {
+        color: #00ff66; /* Título do plano em verde */
+        text-align: center;
+        min-height: 48px; /* Garante que os títulos ocupem a mesma altura */
+    }
+    .plano ul {
+        list-style-type: '✓ '; /* Adiciona um check antes de cada item */
+        padding-left: 20px;
+        flex-grow: 1; /* Faz a lista crescer, empurrando o preço e o botão para baixo */
+    }
+    .plano .preco {
+        text-align: center;
+        font-size: 1.3em;
+        font-weight: bold;
+        margin: 20px 0;
+    }
+    .btn-contratar {
+        margin-top: auto; /* Garante que o botão fique sempre na parte inferior */
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+  <!-- Usa o container largo para dar mais espaço aos planos -->
+  <div class="container container-largo">
     <h2>Planos para Personal Trainers</h2>
     <p>Escolha o plano que melhor se adapta às suas necessidades e comece a gerir os seus alunos.</p>
     <a href="index.php">Voltar</a>
-    <hr>
+    <hr style="border-color: #444;">
     
     <div class="planos-container">
         <?php foreach ($planos as $plano): ?>
@@ -36,8 +73,7 @@ $planos = $pdo->query("SELECT * FROM plano ORDER BY preco ASC")->fetchAll();
                         <li><?= htmlspecialchars($beneficio) ?></li>
                     <?php endforeach; ?>
                 </ul>
-                <p><strong>Preço: R$ <?= number_format($plano['preco'], 2, ',', '.') ?> / mês</strong></p>
-
+                <p class="preco">R$ <?= number_format($plano['preco'], 2, ',', '.') ?> / mês</p>
                 <a href="checkout.php?id_plano=<?= $plano['id_plano'] ?>" class="btn btn-contratar">Contratar Plano</a>
             </div>
         <?php endforeach; ?>
