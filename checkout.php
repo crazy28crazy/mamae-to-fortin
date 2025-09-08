@@ -35,7 +35,7 @@ if (!$plano) {
         border: 1px solid #444;
     }
     .resumo-plano { flex: 1; }
-    .form-pagamento { flex: 2.5; } /* --- ALTERADO AQUI para aumentar o tamanho --- */
+    .form-pagamento { flex: 2.5; }
     .resumo-plano h4 { margin-top: 0; color: #00ff66; }
     .resumo-plano ul { list-style-position: inside; padding-left: 0; margin-bottom: 20px; }
     .resumo-plano .preco { font-size: 1.2em; font-weight: bold; text-align: right; }
@@ -72,7 +72,7 @@ if (!$plano) {
 
         <div class="form-pagamento">
             <h4>Dados de Pagamento</h4>
-            <form action="processa_pagamento.php" method="post" id="payment-form">
+            <form action="pagamento.php" method="post" id="payment-form">
                 <input type="hidden" name="id_plano" value="<?= $plano['id_plano'] ?>">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
                 <div class="form-row">
